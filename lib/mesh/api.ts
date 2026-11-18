@@ -56,9 +56,9 @@ export async function createPaymentSession(): Promise<LinkSession> {
       toAddresses: [
         { networkId: order.networkId, symbol: order.symbol, address: order.toAddress },
       ],
-      // Fixed USD amount. Sandbox transfers come back as exactly $50.00.
-      // VERIFY: confirm the buyer cannot edit the amount inside Link. Either
-      // way, verifyOrder rejects a transfer that pays less than the price.
+      // Fixed USD amount. Confirmed in sandbox: the buyer cannot edit it inside
+      // Link, and transfers come back as exactly $50.00. verifyOrder also
+      // rejects a transfer that pays less than the price.
       amountInFiat: order.amountInFiat,
       transactionId: order.transactionId,
       // "payment" (paying a merchant) rather than the quickstart's "deposit"

@@ -116,9 +116,9 @@ Shop page loads   ─GET /api/balance──────►  POST holdings/get �
 
 ## Things to verify in the sandbox
 
-Confirmed in the sandbox: payments complete end to end, and Mesh records them as `transferType: "payment"`, `succeeded`, for exactly $50.00 of USDC.
+Confirmed in the sandbox: payments complete end to end, and Mesh records them as `transferType: "payment"`, `succeeded`, for exactly $50.00 of USDC. The buyer cannot edit the amount inside Link.
 
-Two points are still marked `// VERIFY`: whether the buyer can edit the amount inside Link (`lib/mesh/api.ts`; server-side verification rejects an underpayment either way), and what Link shows when a returning buyer's saved token has expired (`app/api/payment-token/route.ts`).
+One point is still marked `// VERIFY`, in `app/api/payment-token/route.ts`: what Link shows when a returning buyer's saved token has expired.
 
 ## Demo limitations
 
