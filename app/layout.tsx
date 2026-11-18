@@ -10,7 +10,9 @@ export const dynamic = 'force-dynamic'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: browser extensions add their own attributes to
+    // <html>, which React would otherwise report as an error in development.
+    <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-slate-50 text-slate-900">
         {isMockMode() && (
           <div className="bg-amber-100 px-4 py-2 text-center text-sm text-amber-900">
