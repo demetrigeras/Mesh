@@ -1,5 +1,6 @@
 import 'server-only' // build fails if this file is ever imported into browser code
 
+import { addActivity } from '../activity'
 import { mockMeshResponse } from './mock'
 import type { MeshEnvelope } from './types'
 
@@ -64,6 +65,20 @@ export async function meshFetch<T>(
   console.log(
     `${tag} ← ${httpStatus} ${method} ${path} (${elapsed}ms)`,
     quiet ? '(polling, payload not shown)' : pretty(redact(envelope)),
+  )
+
+  // The same information, for the Activity page.
+  addActivity(
+    {
+      kind: 'mesh',
+      time: startedAt,
+      title: `${method} ${path}`,
+      request: body ? redact(body) : undefined,
+      response: quiet ? undefined : redact(envelope),
+      status: httpStatus,
+      ms: elapsed,
+    },
+    { polling: quiet },
   )
 
   if (httpStatus >= 400 || envelope.status !== 'ok') {

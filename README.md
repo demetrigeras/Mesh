@@ -44,8 +44,12 @@ Mock mode is also used automatically whenever either credential is empty.
 2. **Portfolio**: shows each holding's symbol, amount and USD value, with a total.
 3. **Shop**: with an account connected, the checkout shows your USDC balance and whether it covers the price. Click **Pay with crypto**, log in the same way and approve the transfer. A success screen shows the transfer details, then a "Verified by server" line once the server has confirmed the transfer with Mesh. Closing Link without paying shows a "cancelled" notice instead.
 4. **Orders**: every payment attempt with its status. Paid orders show "verified with Mesh". Orders Mesh was still processing are re-checked each time the page loads.
-5. **Store**: the merchant's view, built from Mesh's transfer records: number of payments, total received, and fees broken down by who charges them.
-6. **Consoles**: the terminal prints every Mesh request and response. The browser console (F12) prints every call from the browser to this app (`[app]`) and every Mesh Link callback (`[mesh link]`).
+5. **Buy again**: back on the Shop, click **Pay with crypto** a second time. Link opens straight on the payment with no Coinbase login, because the app hands your saved access token back to Link.
+6. **Store**: the merchant's view, built from Mesh's transfer records: number of payments, total received, and fees broken down by who charges them.
+7. **Activity**: every request, response and callback in the order it happened, labelled Frontend → Backend, Backend → Mesh, or Mesh Link → Frontend. Use it to walk through a payment step by step. Tokens are hidden and long lists are cut to three items.
+8. **Consoles**: the terminal prints every Mesh request and response. The browser console (F12) prints every call from the browser to this app (`[app]`) and every Mesh Link callback (`[mesh link]`).
+
+To start over as a new user, run `npm run reset`. It deletes the order history, forgets the connected account, and makes the Store dashboard count only payments made from then on. Past sandbox transfers stay in Mesh's records; nothing is deleted at Mesh.
 
 In mock mode the Link step is a simulated popup with **Approve**, **Cancel** and **Simulate an error** buttons, which fire the same callbacks as the real SDK.
 
@@ -64,7 +68,10 @@ Portfolio page (server component)           POST holdings/get ──►
 
 Pay with crypto   ─POST /api/payment-token► GET  networks ──────►
                                             POST linktoken ─────►
-  openLink(linkToken) ◄──────── linkToken + order
+  openLink(linkToken) ◄──────── linkToken + order (+ saved accessToken
+                                            for a returning buyer: no login)
+  onIntegrationConnected (first purchase only)
+                  ─POST /api/connection──►  store accessToken in memory
   onTransferFinished → success screen
                   ─POST /api/orders/verify► GET  transfers/managed/mesh ►
                                             order marked "paid" only if Mesh
@@ -85,18 +92,22 @@ Shop page loads   ─GET /api/balance──────►  POST holdings/get �
 | `lib/mesh/types.ts` | Types for the Mesh responses and for what our routes return. |
 | `lib/session.ts` | In-memory store for the connected account's access token and broker type. |
 | `lib/orders.ts` | Order history, kept in `.data/orders.json`. |
+| `lib/activity.ts`, `app/api/activity/route.ts`, `components/ActivityLog.tsx` | The Activity page: an in-memory log of every call and callback. |
+| `scripts/reset.mjs` | `npm run reset`: back to a new user and an empty store. |
 | `lib/verifyOrder.ts` | Server-side payment verification: looks the transfer up at Mesh and checks it matches the order. |
 | `app/api/*/route.ts` | Thin routes the browser calls: `connect-token`, `payment-token`, `connection`, `balance`, `orders`, `orders/verify`. |
 | `components/useMeshLink.tsx` | Opens the real Mesh Link SDK, or the simulated popup in mock mode. |
 | `components/ConnectCoinbase.tsx`, `components/Checkout.tsx` | The connect button and the checkout. |
 | `components/PaymentBalance.tsx` | The USDC balance line at checkout. |
+| `components/saveConnection.ts` | Sends the access token from `onIntegrationConnected` to the server. |
 | `components/callApi.ts` | `fetch` wrapper that logs each browser-to-server call to the browser console. |
 | `app/page.tsx`, `app/shop/page.tsx`, `app/portfolio/page.tsx`, `app/orders/page.tsx`, `app/store/page.tsx` | The five pages. |
 
 ### Design choices
 
 - **The secret stays on the server.** `lib/mesh/client.ts` imports `server-only`, so the build fails if it is ever pulled into browser code.
-- **The access token stays on the server too.** The browser receives it from Mesh Link, posts it to `/api/connection` once, and never reads it back. The portfolio is a server component, so the holdings call happens entirely server-side.
+- **The access token is kept on the server.** The browser receives it from Mesh Link and posts it to `/api/connection` once. The portfolio is a server component, so the holdings call happens entirely server-side.
+- **Returning buyers skip the login.** When a connected buyer pays again, `/api/payment-token` returns their saved access token with the link token, and the browser passes it to the SDK's `accessTokens` option so Link opens on the payment. The buyer still confirms every payment. The SDK needs the token in the browser for this; it cannot be used without the client secret.
 - **The server decides what is being paid.** Price, token, network and destination address are set in `createPaymentSession`; the browser sends no parameters.
 - **The server decides what is paid.** The browser's `onTransferFinished` callback only triggers a check. The server looks the transfer up at Mesh by `transactionId` and marks the order paid only if it succeeded and matches the order's token, network, address and amount. Mesh keeps a new transfer `pending` for a while, so the server polls every 3 seconds for up to 2 minutes. The browser cannot set an order to paid.
 - **IDs are looked up, not hardcoded.** The Ethereum `networkId` comes from the networks endpoint (the EVM network with `chainId` 1, since Injective also reports `chainId` 1), and the Coinbase `integrationId` from the integrations endpoint (preferring the `sandboxCoinbase` row, which accepts the test login).
@@ -107,7 +118,7 @@ Shop page loads   ─GET /api/balance──────►  POST holdings/get �
 
 Confirmed in the sandbox: payments complete end to end, and Mesh records them as `transferType: "payment"`, `succeeded`, for exactly $50.00 of USDC.
 
-One point is still marked `// VERIFY` in `lib/mesh/api.ts`: whether the buyer can edit the amount inside Link. Server-side verification rejects an underpayment either way.
+Two points are still marked `// VERIFY`: whether the buyer can edit the amount inside Link (`lib/mesh/api.ts`; server-side verification rejects an underpayment either way), and what Link shows when a returning buyer's saved token has expired (`app/api/payment-token/route.ts`).
 
 ## Demo limitations
 
@@ -115,5 +126,4 @@ One point is still marked `// VERIFY` in `lib/mesh/api.ts`: whether the buyer ca
 - Verification is triggered by the browser (after the callback, or when the Orders page loads) and works by polling. A real store would also receive Mesh's transfer status webhooks, so an order is confirmed even if the buyer closes the tab.
 - Orders are kept in a local JSON file, which is not safe for concurrent users.
 - Access tokens are not refreshed when they expire.
-#   M e s h  
- 
+- The app's own routes have no login, so `/api/payment-token` returns the saved access token to whoever calls it. A real app would return it only to the signed-in user it belongs to.

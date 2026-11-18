@@ -60,6 +60,16 @@ export function updateOrder(
   return order
 }
 
+/**
+ * When `npm run reset` was last run, or undefined if never. The Store
+ * dashboard uses it to leave out payments from before the reset.
+ */
+export function getResetTime(): Date | undefined {
+  const file = path.join(path.dirname(FILE), 'reset.json')
+  if (!fs.existsSync(file)) return undefined
+  return new Date(JSON.parse(fs.readFileSync(file, 'utf8')).resetAt)
+}
+
 function save(orders: OrderRecord[]): void {
   fs.mkdirSync(path.dirname(FILE), { recursive: true })
   fs.writeFileSync(FILE, JSON.stringify(orders, null, 2))

@@ -113,9 +113,20 @@ export type PaymentBalance =
       priceUsd: number
     }
 
-/** What our token routes return to the browser. Never contains credentials. */
+/** A connected account, in the shape the SDK's `accessTokens` option expects. */
+export interface SavedAccount {
+  accessToken: string
+  brokerType: string
+  brokerName: string
+  accountId: string
+  accountName: string
+}
+
+/** What our token routes return to the browser. Never contains the client secret. */
 export interface LinkSession {
   linkToken: string
   mock: boolean // true = show the simulated Link popup instead of the real SDK
   order?: PaymentOrder
+  // Returning buyer only: their saved account, so Link can skip the login.
+  accessTokens?: SavedAccount[]
 }

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { LinkPayload } from '@meshconnect/web-link-sdk'
 import type { LinkSession } from '@/lib/mesh/types'
 import { callApi } from './callApi'
+import { saveConnection } from './saveConnection'
 import { useMeshLink } from './useMeshLink'
 
 interface Props {
@@ -17,7 +18,7 @@ export function ConnectCoinbase({ initialAccountName }: Props) {
   const [error, setError] = useState<string>()
 
   const { open, mockPopup } = useMeshLink({
-    onIntegrationConnected: saveConnection,
+    onIntegrationConnected: onConnected,
     onExit: (exitError) => {
       setBusy(false)
       if (exitError) setError(exitError)
@@ -37,20 +38,10 @@ export function ConnectCoinbase({ initialAccountName }: Props) {
   }
 
   /** Hand the token to our server straight away; the browser does not keep it. */
-  async function saveConnection(payload: LinkPayload) {
-    const token = payload.accessToken
-    const account = token?.accountTokens[0]
-    if (!token || !account) {
-      setError('Mesh Link did not return an access token')
-      return
-    }
-    await callApi('POST', '/api/connection', {
-      accessToken: account.accessToken,
-      brokerType: token.brokerType,
-      brokerName: token.brokerName,
-      accountName: account.account.accountName,
-    })
-    setAccountName(account.account.accountName)
+  async function onConnected(payload: LinkPayload) {
+    const name = await saveConnection(payload)
+    if (name) setAccountName(name)
+    else setError('Mesh Link did not return an access token')
     setBusy(false)
   }
 

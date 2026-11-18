@@ -1,5 +1,6 @@
 import { listStorePayments } from '@/lib/mesh/api'
 import type { MeshTransfer } from '@/lib/mesh/types'
+import { getResetTime } from '@/lib/orders'
 
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
@@ -15,9 +16,15 @@ const FEE_TYPES = [
  * records (GET /api/v1/transfers/managed/mesh), not from this app's order file.
  */
 export default async function StorePage() {
+  // Mesh keeps every past transfer. After `npm run reset`, show only the
+  // payments made since then, so a demo can start from an empty store.
+  const resetAt = getResetTime()
+  const sinceReset = (payment: MeshTransfer) =>
+    !resetAt || (payment.createdTimestamp ?? 0) * 1000 >= resetAt.getTime()
+
   let payments: MeshTransfer[]
   try {
-    payments = await listStorePayments()
+    payments = (await listStorePayments()).filter(sinceReset)
   } catch (error) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6">
@@ -38,6 +45,7 @@ export default async function StorePage() {
       <h1 className="text-2xl font-semibold">Store dashboard</h1>
       <p className="mt-1 text-slate-600">
         What the store has been paid, according to Mesh&apos;s transfer records.
+        {resetAt && ` Showing payments since the demo was reset on ${resetAt.toLocaleString()}.`}
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">

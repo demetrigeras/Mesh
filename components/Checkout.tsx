@@ -5,6 +5,7 @@ import type { TransferFinishedPayload } from '@meshconnect/web-link-sdk'
 import type { LinkSession, PaymentOrder } from '@/lib/mesh/types'
 import { callApi } from './callApi'
 import { PaymentBalance } from './PaymentBalance'
+import { saveConnection } from './saveConnection'
 import { useMeshLink } from './useMeshLink'
 
 // The checkout is always in exactly one of these states.
@@ -32,6 +33,13 @@ export function Checkout() {
   const paid = useRef(false)
 
   const { open, mockPopup } = useMeshLink({
+    // A first-time buyer logs in to Coinbase inside Link. Save that connection
+    // so the next purchase can skip the login.
+    onIntegrationConnected: (payload) => {
+      saveConnection(payload).catch((error) =>
+        console.error('[app] could not save the connection', error),
+      )
+    },
     onTransferFinished: (transfer) => {
       paid.current = true
       setCheckout({ step: 'success', order: order.current, transfer })

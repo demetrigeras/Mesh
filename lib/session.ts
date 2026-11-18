@@ -4,10 +4,16 @@ import 'server-only'
 // It is lost on restart and shared by every visitor. A real app would keep
 // this encrypted in a database, keyed by the signed-in user.
 
+/**
+ * A connected account. These are the five fields the Mesh SDK's `accessTokens`
+ * option expects, so a saved connection can be handed straight back to Link
+ * to let a returning buyer skip the login.
+ */
 export interface Connection {
-  accessToken: string // Mesh auth token for the connected account. Never sent to the browser.
+  accessToken: string // Mesh auth token for the connected account
   brokerType: string
   brokerName: string
+  accountId: string
   accountName: string
 }
 
